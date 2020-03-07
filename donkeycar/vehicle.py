@@ -11,6 +11,7 @@ from statistics import median
 from threading import Thread
 from .memory import Memory
 from prettytable import PrettyTable
+from donkeycar.parts.datastore import TubHandler
 
 
 class PartProfiler:
@@ -51,16 +52,77 @@ class PartProfiler:
         print(pt)
 
 
+class Telemetry:
+    def __init__(self, path):
+        print(path)
+        self.th = TubHandler(path=path)
+        self.mem = Memory()
+
+        self.inputs=[
+            'cam/image_array',
+            'user/angle', 
+            'user/throttle', 
+            'user/mode',
+            'beacons/beacon1',
+            'beacons/beacon2',
+            'beacons/beacon3',
+        ]
+        self.types=[
+            'image_array',
+            'float', 
+            'float',
+            'str',
+            'int',
+            'int',
+            'int'
+        ]
+        self.tub = self.th.new_tub_writer(inputs=self.inputs, types=self.types, user_meta=[])
+
+
+    def create_tub(self):
+        self.tub = self.th.new_tub_writer(inputs=self.inputs, types=self.types)
+
+
+    def write_snapshot(self):
+        pass
+
+
+    def record(self):
+        inputs = self.mem.get(self.inputs)
+        self.tub.run(*inputs)
+
+
+    def get(self, keys):
+        return self.mem.get(keys)
+
+    def put(self, keys, inputs):
+        self.mem.put(keys, inputs)
+
+
 class Vehicle:
-    def __init__(self, mem=None):
+    def __init__(self, cfg, mem=None):
 
         if not mem:
             mem = Memory()
         self.mem = mem
         self.parts = []
+        self.driver = None
         self.on = True
         self.threads = []
         self.profiler = PartProfiler()
+        self.cfg = cfg
+        self.telemetry = Telemetry(cfg.DATA_PATH)
+
+        # States that used to be in mem
+        self.is_recording = False
+        self.is_ai_running = False
+        self.driver = 'user' # user | local_angle | local
+        # self.driver = Driver()
+        # def change_driver
+        # def start_recording
+
+    def change_driver(self):
+        pass
 
     def add(self, part, inputs=[], outputs=[],
             threaded=False, run_condition=None):
@@ -140,7 +202,14 @@ class Vehicle:
                 start_time = time.time()
                 loop_count += 1
 
+                # update all third party sensors
                 self.update_parts()
+
+                # record telemetry
+                if self.telemetry.get(['recording'])[0]:
+                    self.telemetry.record()
+
+                # then update driver
 
                 # stop drive loop if loop_count exceeds max_loopcount
                 if max_loop_count and loop_count > max_loop_count:
@@ -173,7 +242,7 @@ class Vehicle:
             # check run condition, if it exists
             if entry.get('run_condition'):
                 run_condition = entry.get('run_condition')
-                run = self.mem.get([run_condition])[0]
+                run = self.telemetry.get([run_condition])[0]
             
             if run:
                 # get part
@@ -181,7 +250,7 @@ class Vehicle:
                 # start timing part run
                 self.profiler.on_part_start(p)
                 # get inputs from memory
-                inputs = self.mem.get(entry['inputs'])
+                inputs = self.telemetry.get(entry['inputs'])
                 # run the part
                 if entry.get('thread'):
                     outputs = p.run_threaded(*inputs)
@@ -190,7 +259,7 @@ class Vehicle:
 
                 # save the output to memory
                 if outputs is not None:
-                    self.mem.put(entry['outputs'], outputs)
+                    self.telemetry.put(entry['outputs'], outputs)
                 # finish timing part run
                 self.profiler.on_part_finished(p)
 

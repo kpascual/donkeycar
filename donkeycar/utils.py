@@ -429,7 +429,7 @@ def get_model_by_type(model_type, cfg):
     '''
     from donkeycar.parts.keras import KerasRNN_LSTM, KerasBehavioral, \
         KerasCategorical, KerasIMU, KerasLinear, Keras3D_CNN, \
-        KerasLocalizer, KerasLatent
+        KerasLocalizer, KerasLatent, KerasKen
     from donkeycar.parts.tflite import TFLitePilot
  
     if model_type is None:
@@ -447,6 +447,8 @@ def get_model_by_type(model_type, cfg):
         kl = KerasBehavioral(num_outputs=2, num_behavior_inputs=len(cfg.BEHAVIOR_LIST), input_shape=input_shape)        
     elif model_type == "imu":
         kl = KerasIMU(num_outputs=2, num_imu_inputs=6, input_shape=input_shape)        
+    elif model_type == "ken":
+        kl = KerasKen(num_outputs=2, num_imu_inputs=3, input_shape=input_shape)        
     elif model_type == "linear":
         kl = KerasLinear(input_shape=input_shape, roi_crop=roi_crop)
     elif model_type == "tensorrt_linear":
