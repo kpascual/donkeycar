@@ -130,10 +130,10 @@ def img_crop(img_arr, top, bottom):
     return img_arr[top:end, ...]
 
 
-def normalize_and_crop(img_arr, cfg):
+def normalize_and_crop(img_arr, crop_top = None, crop_bottom = None, cfg = None):
     img_arr = img_arr.astype(np.float32) * one_byte_scale
-    if cfg.ROI_CROP_TOP or cfg.ROI_CROP_BOTTOM:
-        img_arr = img_crop(img_arr, cfg.ROI_CROP_TOP, cfg.ROI_CROP_BOTTOM)
+    if crop_top or crop_bottom:
+        img_arr = img_crop(img_arr, crop_top, crop_bottom)
         if len(img_arr.shape) == 2:
             img_arrH = img_arr.shape[0]
             img_arrW = img_arr.shape[1]
@@ -361,7 +361,7 @@ def expand_path_masks(paths):
     return expanded_paths
 
 
-def gather_tub_paths(cfg, tub_names=None):
+def gather_tub_paths(root_path, tub_names=None):
     '''
     takes as input the configuration, and the comma seperated list of tub paths
     returns a list of Tub paths
@@ -373,7 +373,7 @@ def gather_tub_paths(cfg, tub_names=None):
             tub_paths = [os.path.expanduser(n) for n in tub_names.split(',')]
         return expand_path_masks(tub_paths)
     else:
-        paths = [os.path.join(cfg.DATA_PATH, n) for n in os.listdir(cfg.DATA_PATH)]
+        paths = [os.path.join(root_path, n) for n in os.listdir(root_path)]
         dir_paths = []
         for p in paths:
             if os.path.isdir(p):
@@ -381,14 +381,14 @@ def gather_tub_paths(cfg, tub_names=None):
         return dir_paths
 
 
-def gather_tubs(cfg, tub_names):    
+def gather_tubs(root_path, tub_names):    
     '''
     takes as input the configuration, and the comma seperated list of tub paths
     returns a list of Tub objects initialized to each path
     '''
     from donkeycar.parts.datastore import Tub
     
-    tub_paths = gather_tub_paths(cfg, tub_names)
+    tub_paths = gather_tub_paths(root_path, tub_names)
     tubs = [Tub(p) for p in tub_paths]
 
     return tubs
@@ -407,9 +407,9 @@ def get_record_index(fnm):
     return int(sl[1].split('.')[0])
 
 
-def gather_records(cfg, tub_names, opts=None, verbose=False):
+def gather_records(root_path, tub_names, verbose=False):
 
-    tubs = gather_tubs(cfg, tub_names)
+    tubs = gather_tubs(root_path, tub_names)
 
     records = []
 

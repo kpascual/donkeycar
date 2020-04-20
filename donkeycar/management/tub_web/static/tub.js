@@ -64,6 +64,12 @@ $(document).ready(function(){
             if (angle > 0) {
                 $('#angle-bar-forward').css('width', steeringPercent).html(steeringRounded)
             }
+            dstr = "";
+            let keys = Object.keys(data).sort()
+            for (key in keys) {
+                dstr += keys[key] + ": " + data[keys[key]] + "\n";
+            }
+            $('#preview-data').text(dstr);
         });
     };
 

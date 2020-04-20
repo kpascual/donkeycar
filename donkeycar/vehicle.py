@@ -7,6 +7,7 @@ Created on Sun Jun 25 10:44:24 2017
 """
 
 import time
+from itertools import cycle
 from statistics import median
 from threading import Thread
 from .memory import Memory
@@ -83,8 +84,8 @@ class Telemetry:
         self.tub = self.th.new_tub_writer(inputs=self.inputs, types=self.types)
 
 
-    def write_snapshot(self):
-        pass
+    def save_vehicle_configuration(self, parts):
+        self.tub.save_vehicle_configuration(parts)
 
 
     def record(self):
@@ -112,6 +113,8 @@ class Vehicle:
         self.profiler = PartProfiler()
         self.cfg = cfg
         self.telemetry = Telemetry(cfg.DATA_PATH)
+        self.mode = 'user'
+        self.mode_iterator = cycle(['user', 'local_angle', 'local'])
 
         # States that used to be in mem
         self.is_recording = False
@@ -123,6 +126,12 @@ class Vehicle:
 
     def change_driver(self):
         pass
+
+
+    def toggle_mode(self):
+        self.mode = next(self.mode_iterator)
+        return self.mode
+        
 
     def add(self, part, inputs=[], outputs=[],
             threaded=False, run_condition=None):
@@ -148,6 +157,7 @@ class Vehicle:
         print('Adding part {}.'.format(p.__class__.__name__))
         entry = {}
         entry['part'] = p
+        entry['part_name'] = p.__class__.__name__
         entry['inputs'] = inputs
         entry['outputs'] = outputs
         entry['run_condition'] = run_condition
@@ -194,6 +204,9 @@ class Vehicle:
                     # start the update thread
                     entry.get('thread').start()
 
+            # Pre-start checking
+            self.telemetry.save_vehicle_configuration(self.parts)
+
             # wait until the parts warm up.
             print('Starting vehicle...')
 
@@ -204,9 +217,11 @@ class Vehicle:
 
                 # update all third party sensors
                 self.update_parts()
+                # update system parts
 
                 # record telemetry
-                if self.telemetry.get(['recording'])[0]:
+                #if self.telemetry.get(['recording'])[0]:
+                if self.is_recording:
                     self.telemetry.record()
 
                 # then update driver
