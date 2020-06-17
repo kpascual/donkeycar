@@ -81,7 +81,7 @@ class CreateCar(BaseCommand):
         path = make_dir(path)
         
         print("Creating data & model folders.")
-        folders = ['models', 'data', 'logs']
+        folders = ['models', 'data', 'logs', 'drivers', 'carconfigs']
         folder_paths = [os.path.join(path, f) for f in folders]   
         for fp in folder_paths:
             make_dir(fp)
@@ -89,12 +89,14 @@ class CreateCar(BaseCommand):
         #add car application and config files if they don't exist
         app_template_path = os.path.join(TEMPLATES_PATH, template+'.py')
         config_template_path = os.path.join(TEMPLATES_PATH, 'cfg_' + template + '.py')
-        myconfig_template_path = os.path.join(TEMPLATES_PATH, 'myconfig.py')
+        myconfig_template_path = os.path.join(TEMPLATES_PATH, 'defaults.yml')
         train_template_path = os.path.join(TEMPLATES_PATH, 'train.py')
+        manager_template_path = os.path.join(TEMPLATES_PATH, 'manager.py')
         car_app_path = os.path.join(path, 'manage.py')
         car_config_path = os.path.join(path, 'config.py')
-        mycar_config_path = os.path.join(path, 'myconfig.py')
+        mycar_config_path = os.path.join(path, 'defaults.yml')
         train_app_path = os.path.join(path, 'train.py')
+        manager_app_path = os.path.join(path, 'manager.py')
         
         if os.path.exists(car_app_path) and not overwrite:
             print('Car app already exists. Delete it and rerun createcar to replace.')
@@ -113,6 +115,12 @@ class CreateCar(BaseCommand):
         else:
             print("Copying train script. Adjust these before starting your car.")
             shutil.copyfile(train_template_path, train_app_path)
+
+        if os.path.exists(manager_app_path) and not overwrite:
+            print('Drive Manager already exists. Delete it and rerun createcar to replace.')
+        else:
+            print("Copying manager script. Adjust these before starting your car.")
+            shutil.copyfile(manager_template_path, manager_app_path)
 
         if not os.path.exists(mycar_config_path):
             print("Copying my car config overrides")
