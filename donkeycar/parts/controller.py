@@ -650,7 +650,7 @@ class JoystickController(object):
                  steering_scale=1.0,
                  throttle_dir=-1.0,
                  dev_fn='/dev/input/js0',
-                 auto_record_on_throttle=True):
+                 auto_record_on_throttle=False):
 
         self.angle = 0.0
         self.throttle = 0.0

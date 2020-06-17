@@ -41,6 +41,14 @@ class Tub(object):
         self.meta_path = os.path.join(self.path, 'meta.json')
         self.exclude_path = os.path.join(self.path, "exclude.json")
         self.df = None
+        self.meta = {
+            'inputs': [],
+            'types': [],
+            'start': None,
+            'start_time': None,
+            'end_time': None,
+            'parts': []
+        }
 
         exists = os.path.exists(self.path)
 
@@ -51,7 +59,7 @@ class Tub(object):
                 with open(self.meta_path, 'r') as f:
                     self.meta = json.load(f)
             except FileNotFoundError:
-                self.meta = {'inputs': [], 'types': []}
+                pass
 
             try:
                 with open(self.exclude_path,'r') as f:
@@ -70,20 +78,23 @@ class Tub(object):
             else:
                 self.start_time = time.time()
                 self.meta['start'] = self.start_time
+                self.meta['start_time'] = self.start_time
 
         elif not exists and inputs:
             print('Tub does NOT exist. Creating new tub...')
             self.start_time = time.time()
             #create log and save meta
             os.makedirs(self.path)
-            self.meta = {'inputs': inputs, 'types': types, 'start': self.start_time}
+            self.meta['inputs'] = inputs
+            self.meta['types'] = types
+            self.meta['start'] = self.start_time
+            self.meta['start_time'] = self.start_time
             for kv in user_meta:
                 kvs = kv.split(":")
                 if len(kvs) == 2:
                     self.meta[kvs[0]] = kvs[1]
-                # else exception? print message?
-            with open(self.meta_path, 'w') as f:
-                json.dump(self.meta, f)
+                
+            self.write_meta()
             self.current_ix = 0
             self.exclude = set()
             print('New tub created at: {}'.format(self.path))
@@ -137,6 +148,22 @@ class Tub(object):
     @property
     def types(self):
         return list(self.meta['types'])
+
+    @property
+    def parts(self):
+        return self.meta['parts']
+
+    @parts.setter
+    def parts(self, parts):
+        self.meta['parts'] = parts
+
+    @property
+    def end_time(self):
+        return self.meta['end_time']
+
+    @end_time.setter
+    def end_time(self, end_time):
+        self.meta['end_time'] = end_time
 
     def get_input_type(self, key):
         input_types = dict(zip(self.inputs, self.types))
@@ -425,6 +452,11 @@ class Tub(object):
         return train_gen, val_gen
 
 
+    def write_meta(self):
+        with open(self.meta_path, 'w') as f:
+            json.dump(self.meta, f)
+
+
 
 
 
@@ -492,10 +524,19 @@ class TubHandler():
         tub_path = os.path.join(self.path, name)
         return tub_path
 
-    def new_tub_writer(self, inputs, types, user_meta=[]):
-        tub_path = self.create_tub_path()
+    def new_tub_writer(self, inputs, types, user_meta=[], path=None):
+        if path:
+            tub_path = os.path.join(self.path, path)
+        else:
+            tub_path = self.create_tub_path()
+        
+        
+        print("tub path: " + tub_path)
         tw = TubWriter(path=tub_path, inputs=inputs, types=types, user_meta=user_meta)
         return tw
+
+
+    
 
 
 
