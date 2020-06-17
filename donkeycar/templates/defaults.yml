@@ -1,4 +1,4 @@
-DATA_PATH: 'data'
+DATA_PATH: 'drive_session_data'
 
 DRIVE_LOOP_HZ: 20
 MAX_LOOPS: null
