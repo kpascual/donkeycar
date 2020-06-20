@@ -10,11 +10,13 @@ import time
 from itertools import cycle
 from statistics import median
 from threading import Thread
+import threading
 from .memory import Memory
 from prettytable import PrettyTable
 from donkeycar.parts.datastore import TubHandler
 
-
+# How quickly do certain parts run? (e.g. is the drive loop efficient?)
+# This is different than telemetry data outputted by the parts
 class PartProfiler:
     def __init__(self):
         self.records = {}
@@ -53,6 +55,9 @@ class PartProfiler:
         print(pt)
 
 
+# Rename Telemetry to TelemetryRecorder
+# Rename Memory to Telemetry
+# responsibilities: 1) where to save it 2) what info to save
 class Telemetry:
     def __init__(self, path):
         print(path)
@@ -63,6 +68,8 @@ class Telemetry:
             'cam/image_array',
             'user/angle', 
             'user/throttle', 
+            'angle',
+            'throttle',
             'user/mode',
             'beacons/beacon1',
             'beacons/beacon2',
@@ -72,20 +79,30 @@ class Telemetry:
             'image_array',
             'float', 
             'float',
+            'float', 
+            'float',
             'str',
             'int',
             'int',
             'int'
         ]
-        self.tub = self.th.new_tub_writer(inputs=self.inputs, types=self.types, user_meta=[])
+        self.tub = None
 
 
-    def create_tub(self):
-        self.tub = self.th.new_tub_writer(inputs=self.inputs, types=self.types)
+    def create_tub(self, path = None):
+        print("Path found:" + path)
+        self.tub = self.th.new_tub_writer(inputs=self.inputs, types=self.types, path=path)
 
 
     def save_vehicle_configuration(self, parts):
-        self.tub.save_vehicle_configuration(parts)
+        newparts = []
+        for p in parts:
+            newparts.append({k:v for k,v in p.items() if k != 'thread' and k != 'part'})
+
+        self.tub.parts = newparts
+
+    def save_end_time(self):
+        self.tub.end_time = time.time()
 
 
     def record(self):
@@ -98,6 +115,10 @@ class Telemetry:
 
     def put(self, keys, inputs):
         self.mem.put(keys, inputs)
+
+    def cleanup_postsession(self):
+        self.save_end_time()
+        self.tub.write_meta()
 
 
 class Vehicle:
@@ -113,8 +134,7 @@ class Vehicle:
         self.profiler = PartProfiler()
         self.cfg = cfg
         self.telemetry = Telemetry(cfg.DATA_PATH)
-        self.mode = 'user'
-        self.mode_iterator = cycle(['user', 'local_angle', 'local'])
+        self.channels = []
 
         # States that used to be in mem
         self.is_recording = False
@@ -127,11 +147,11 @@ class Vehicle:
     def change_driver(self):
         pass
 
+    def set_config(self, path = None):
+        self.telemetry.create_tub(path)
 
-    def toggle_mode(self):
-        self.mode = next(self.mode_iterator)
-        return self.mode
-        
+    def add_part(self, part, inputs=[], outputs=[], threaded=False, run_condition=None):
+        self.add(part, inputs, outputs, threaded=threaded, run_condition=run_condition)
 
     def add(self, part, inputs=[], outputs=[],
             threaded=False, run_condition=None):
@@ -161,14 +181,14 @@ class Vehicle:
         entry['inputs'] = inputs
         entry['outputs'] = outputs
         entry['run_condition'] = run_condition
+        entry['threaded'] = threaded
 
-        if threaded:
-            t = Thread(target=part.update, args=())
-            t.daemon = True
-            entry['thread'] = t
 
         self.parts.append(entry)
         self.profiler.profile_part(part)
+
+        self.channels.extend([i for i in inputs if i not in self.channels])
+        self.channels.extend([o for o in outputs if o not in self.channels])
 
     def remove(self, part):
         """
@@ -194,15 +214,26 @@ class Vehicle:
             Maximum number of loops the drive loop should execute. This is
             used for testing that all the parts of the vehicle work.
         """
+        ct = threading.currentThread()
 
         try:
 
             self.on = True
 
             for entry in self.parts:
-                if entry.get('thread'):
+                if entry.get('threaded'):
                     # start the update thread
+                    t = Thread(target=entry['part'].update, args=())
+                    t.daemon = True
+                    entry['thread'] = t
+
+                    print("adding thread for part " + entry['part_name'])
                     entry.get('thread').start()
+                if hasattr(entry['part'], 'running'):
+                    entry['part'].running = True
+
+            # Pre-start checking
+            self.telemetry.save_vehicle_configuration(self.parts)
 
             # Pre-start checking
             self.telemetry.save_vehicle_configuration(self.parts)
@@ -211,7 +242,7 @@ class Vehicle:
             print('Starting vehicle...')
 
             loop_count = 0
-            while self.on:
+            while self.on and getattr(ct, "is_on", True):
                 start_time = time.time()
                 loop_count += 1
 
@@ -222,6 +253,12 @@ class Vehicle:
                 # record telemetry
                 #if self.telemetry.get(['recording'])[0]:
                 if self.is_recording:
+                    self.telemetry.record()
+
+                # then update driver
+
+                # record telemetry
+                if self.telemetry.get(['recording'])[0]:
                     self.telemetry.record()
 
                 # then update driver
@@ -281,12 +318,18 @@ class Vehicle:
     def stop(self):        
         print('Shutting down vehicle and its parts...')
         for entry in self.parts:
+            print(entry['part_name'])
             try:
                 entry['part'].shutdown()
+                if entry.get('threaded'):
+                    print("deleting thread")
+                    del entry['thread']
+                    print("thread deleted")
             except AttributeError:
                 # usually from missing shutdown method, which should be optional
                 pass
             except Exception as e:
                 print(e)
 
+        self.telemetry.cleanup_postsession()
         self.profiler.report()

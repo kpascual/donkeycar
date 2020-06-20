@@ -650,7 +650,7 @@ class JoystickController(object):
                  steering_scale=1.0,
                  throttle_dir=-1.0,
                  dev_fn='/dev/input/js0',
-                 auto_record_on_throttle=True):
+                 auto_record_on_throttle=False):
 
         self.angle = 0.0
         self.throttle = 0.0
@@ -1421,10 +1421,12 @@ def get_js_controller(cfg):
     else:
         raise("Unknown controller type: " + cfg.CONTROLLER_TYPE)
 
-    ctr = cont_class(throttle_dir=cfg.JOYSTICK_THROTTLE_DIR,
-                                throttle_scale=cfg.JOYSTICK_MAX_THROTTLE,
-                                steering_scale=cfg.JOYSTICK_STEERING_SCALE,
-                                auto_record_on_throttle=cfg.AUTO_RECORD_ON_THROTTLE)
+    ctr = cont_class(
+        throttle_dir = cfg.JOYSTICK_THROTTLE_DIR,
+        throttle_scale = cfg.JOYSTICK_MAX_THROTTLE,
+        steering_scale = cfg.JOYSTICK_STEERING_SCALE,
+        auto_record_on_throttle = cfg.AUTO_RECORD_ON_THROTTLE
+    )
 
     ctr.set_deadzone(cfg.JOYSTICK_DEADZONE)
     return ctr

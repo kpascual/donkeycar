@@ -123,6 +123,7 @@ def rgb2gray(rgb):
 
 def img_crop(img_arr, top, bottom):
     
+    #print(img_arr, top, bottom)
     if bottom is 0:
         end = img_arr.shape[0]
     else:
@@ -130,7 +131,7 @@ def img_crop(img_arr, top, bottom):
     return img_arr[top:end, ...]
 
 
-def normalize_and_crop(img_arr, crop_top = None, crop_bottom = None, cfg = None):
+def normalize_and_crop(img_arr, crop_top = 0, crop_bottom = 0, cfg = None):
     img_arr = img_arr.astype(np.float32) * one_byte_scale
     if crop_top or crop_bottom:
         img_arr = img_crop(img_arr, crop_top, crop_bottom)

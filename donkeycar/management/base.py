@@ -81,70 +81,30 @@ class CreateCar(BaseCommand):
         path = make_dir(path)
         
         print("Creating data & model folders.")
-        folders = ['drivers', 'data']
+        folders = ['drive_session_data', 'drivers', 'carconfigs']
         folder_paths = [os.path.join(path, f) for f in folders]   
         for fp in folder_paths:
             make_dir(fp)
             
-        #add car application and config files if they don't exist
-        app_template_path = os.path.join(TEMPLATES_PATH, template+'.py')
-        config_template_path = os.path.join(TEMPLATES_PATH, 'cfg_' + template + '.py')
-        myconfig_template_path = os.path.join(TEMPLATES_PATH, 'myconfig.py')
-        drive_template_path = os.path.join(TEMPLATES_PATH, 'drives/')
-        nn_template_path = os.path.join(TEMPLATES_PATH, 'nn/')
 
-        car_config_path = os.path.join(path, 'config.py')
-        mycar_config_path = os.path.join(path, 'myconfig.py')
-        drive_scripts_path = os.path.join(path, 'drives')
-        nn_scripts_path = os.path.join(path, 'nn')
-        car_app_path = os.path.join(path, 'old_drive.py')
+        files = [
+            (os.path.join(TEMPLATES_PATH, template+'.py'), os.path.join(path, 'manage.py')),
+            (os.path.join(TEMPLATES_PATH, 'cfg_' + template + '.py'), os.path.join(path, 'config.py')),
+            (os.path.join(TEMPLATES_PATH, 'defaults.yml'), os.path.join(path, 'defaults.yml')),
+            (os.path.join(TEMPLATES_PATH, 'train.py'), os.path.join(path, 'train.py')),
+            (os.path.join(TEMPLATES_PATH, 'manager.py'), os.path.join(path, 'manager.py')),
+            (os.path.join(TEMPLATES_PATH, 'drive_basic.py'), os.path.join(path, 'carconfigs/drive_basic.py')),
+        ]
+        for f in files:
+            self._copyTemplate(f[0], f[1])
 
 
-        if os.path.exists(drive_scripts_path) and not overwrite:
-            print('Keras models directory already exists. Delete it and rerun createcar to replace.')
+    def _copyTemplate(self, source_path, dest_path):
+        if os.path.exists(dest_path) and not overwrite:
+            print('Path {} already exists. Delete it and rerun createcar to replace.'.format(dest_path))
         else:
-            print("Copying sample drive scripts: {}".format(template))
-            shutil.copytree(drive_template_path, drive_scripts_path)
-
-        if os.path.exists(nn_scripts_path) and not overwrite:
-            print('Keras models directory already exists. Delete it and rerun createcar to replace.')
-        else:
-            print("Copying sample keras models: {}".format(template))
-            shutil.copytree(nn_template_path, nn_scripts_path)
-            
-        if os.path.exists(car_config_path) and not overwrite:
-            print('Car config already exists. Delete it and rerun createcar to replace.')
-        else:
-            print("Copying car config defaults. Adjust these before starting your car.")
-            shutil.copyfile(config_template_path, car_config_path)
- 
-
-        if not os.path.exists(mycar_config_path):
-            print("Copying my car config overrides")
-            shutil.copyfile(myconfig_template_path, mycar_config_path)
-            #now copy file contents from config to myconfig, with all lines commented out.
-            cfg = open(car_config_path, "rt")
-            mcfg = open(mycar_config_path, "at")
-            copy = False
-            for line in cfg:
-                if "import os" in line:
-                    copy = True
-                if copy: 
-                    mcfg.write("# " + line)
-            cfg.close()
-            mcfg.close()
-
-        # OLD VERSION, keep for comparison
-        if os.path.exists(car_app_path) and not overwrite:
-            print('Car app already exists. Delete it and rerun createcar to replace.')
-        else:
-            print("Copying car application template: {}".format(template))
-            shutil.copyfile(app_template_path, car_app_path)
-
-        
-
- 
-        print("Donkey setup complete.")
+            print("Copying template {} to {}. Adjust these before starting your car.".format(source_path, dest_path))
+            shutil.copyfile(source_path, dest_path)
 
 
 class CreateSchool(BaseCommand):
@@ -171,58 +131,33 @@ class CreateSchool(BaseCommand):
         path = make_dir(path)
         
         print("Creating data & model folders.")
-        folders = ['drivers', 'nn', 'data']
+        folders = ['drivers', 'drive_session_data']
         folder_paths = [os.path.join(path, f) for f in folders]   
         for fp in folder_paths:
             make_dir(fp)
             
-        #add car application and config files if they don't exist
-        app_template_path = os.path.join(TEMPLATES_PATH, template+'.py')
-        config_template_path = os.path.join(TEMPLATES_PATH, 'cfg_' + template + '.py')
-        myconfig_template_path = os.path.join(TEMPLATES_PATH, 'myconfig.py')
+        # copy template files
         train_template_path = os.path.join(TEMPLATES_PATH, 'train.py')
-        car_app_path = os.path.join(path, 'manage.py')
-        car_config_path = os.path.join(path, 'config.py')
-        mycar_config_path = os.path.join(path, 'myconfig.py')
         train_app_path = os.path.join(path, 'train.py')
+        nn_template_path = os.path.join(TEMPLATES_PATH, 'nn/')
+        nn_scripts_path = os.path.join(path, 'nn')
         
-        if os.path.exists(car_app_path) and not overwrite:
-            print('School already exists. Delete it and rerun createschool to replace.')
-        else:
-            print("Copying school template: {}".format(template))
-            shutil.copyfile(app_template_path, car_app_path)
-            
-        if os.path.exists(car_config_path) and not overwrite:
-            print('School config already exists. Delete it and rerun createcar to replace.')
-        else:
-            print("Copying school config defaults. Adjust these before training.")
-            shutil.copyfile(config_template_path, car_config_path)
- 
         if os.path.exists(train_app_path) and not overwrite:
-            print('Train already exists. Delete it and rerun createcar to replace.')
+            print('train.py already exists. Delete it and rerun createschool to replace.')
         else:
-            print("Copying train script. Adjust these before starting your car.")
+            print("Copying train script.")
             shutil.copyfile(train_template_path, train_app_path)
 
-        if not os.path.exists(mycar_config_path):
-            print("Copying my car config overrides")
-            shutil.copyfile(myconfig_template_path, mycar_config_path)
-            #now copy file contents from config to myconfig, with all lines commented out.
-            cfg = open(car_config_path, "rt")
-            mcfg = open(mycar_config_path, "at")
-            copy = False
-            for line in cfg:
-                if "import os" in line:
-                    copy = True
-                if copy: 
-                    mcfg.write("# " + line)
-            cfg.close()
-            mcfg.close()
+        # copy neural network sample files
+        if os.path.exists(nn_scripts_path) and not overwrite:
+            print('Keras models directory already exists. Delete it and rerun createschool to replace.')
+        else:
+            print("Copying sample keras models: {}".format(template))
+            shutil.copytree(nn_template_path, nn_scripts_path)
 
- 
-        print("School setup complete.")
-    
+        print("School setup complete.") 
         
+
 
 
 class UpdateCar(BaseCommand):
