@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2>1. Configure Car</h2>
+
+    <h3>1a. Car Setup</h3>
+    {% for config in carconfigs %}
+        <input name='config' id='config-{{config}}' type='radio' value='{{config}}'><label for='config-{{config}}'>{{config}}</label><br />
+    {% end %}
+
+    <h3>1b. Driver</h3>
+        <input name='driver' id='driver-manual' type='radio' value='manual' checked><label for='driver-manual'>Manual</label><br />
+    {% for driver in drivers %}
+        <input name='driver' id='driver-{{driver}}' type='radio' value='{{driver}}'><label for='driver-{{driver}}'>{{driver}}</label><br />
+    {% end %}
+
+    <h3>1c. Data Recording Configuration</h3>
+    <input id='custom-telemetry-path' type='checkbox'>
+    Record to: <input id='telemetry-path' disabled>Path here</input><br />
+
+    <p>
+        <button id='configure' class='btn btn-primary'>Configure Car</button>
+    </p>
+
+    <h2>Current Configuration</h2>
+    <h3>Parts</h3>
+    <pre id='current-configuration'><code></code>
+    </pre>
+    <h3>Data Channels</h3>
+    <div id='data-channels'></div>
+
+
+    <h2>2. Start Car</h2>
+    <div id='drive-controls'>
+        <button id='toggle-drive' class='btn btn-primary btn-large'>Start</button>
+    </div>
+
+
+    Throttle constrain?<br />
+</div>
+
+<script type='text/javascript'>
+    let config;
+    var parts;
+    var dataChannels;
+    //let observer = new Proxy();
+    $(document).ready(function() {
+        $("#toggle-drive").click(function() {
+            let val = $(this).text();
+            let that = this;
+            if (val == "Start") {
+                // start drive
+                $.ajax({
+                    type: "POST",
+                    url: "drive", 
+                    data: {
+                        "command": "start",
+                        "config": $('input[name="config"]:checked').val(),
+                        "driver": $('input[name="driver"]:checked').val()
+                    },
+                    success: function(data) {
+                        console.log(data);
+                        $(that).text("Stop");
+                    } 
+                });
+            } else {
+                // stop drive
+                $.ajax({
+                    type: "POST",
+                    url: "drive", 
+                    data: {"command": "stop"},
+                    success: function(data) {
+                        console.log(data);
+                        $(that).text("Start"); 
+                    }
+                });
+            }
+        });
+        $("#custom-telemetry-path").change(function(){
+            if ($(this).prop('checked')) {
+                $("#telemetry-path").prop('disabled', false);
+            } else {
+                $("#telemetry-path").prop('disabled', true);
+            }
+        });
+
+
+        $("#configure").click(function(){
+            let config = $('input[name="config"]:checked').val();
+            let path = null;
+
+            if ($("#custom-telemetry-path").prop('checked')) {
+                path = $("#telemetry-path").val();
+            }            
+            $.ajax({
+                type: "POST",
+                url: "config", 
+                data: {
+                    "config": config,
+                    "path": path
+                },
+                success: function(data) {
+                    $("#current-configuration code").text(JSON.stringify(data, undefined, 2));
+                    parts = data;
+                    allChannels = [];
+                    console.log(parts['parts']);
+                    for (part of parts['parts']) {
+                        for (i of part['inputs']) {
+                            if (!allChannels.includes(i)) {
+                                allChannels.push(i);
+                            }
+                        }
+                        for (o of part['outputs']) {
+                            if (!allChannels.includes(o)) {
+                                allChannels.push(o);
+                            }
+                        }
+                    }
+                    dataChannels = allChannels;
+
+                    $("#data-channels").text(JSON.stringify(dataChannels));
+                    /*
+                    $.each(dataChannels, function(channel) {
+                        $("<input />").attr("")
+                    });
+                    */
+                }
+            });
+            
+        });
+    });
+</script>
+{% end %}
