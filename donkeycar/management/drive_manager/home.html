@@ -2,32 +2,48 @@
 
 {% block content %}
 <div class="container-fluid">
-    <h2>Configurations</h2>
+    <h2>1. Configure Car</h2>
+
+    <h3>1a. Car Setup</h3>
     {% for config in carconfigs %}
         <input name='config' id='config-{{config}}' type='radio' value='{{config}}'><label for='config-{{config}}'>{{config}}</label><br />
     {% end %}
 
-    <h2>Drivers</h2>
+    <h3>1b. Driver</h3>
+        <input name='driver' id='driver-manual' type='radio' value='manual' checked><label for='driver-manual'>Manual</label><br />
     {% for driver in drivers %}
         <input name='driver' id='driver-{{driver}}' type='radio' value='{{driver}}'><label for='driver-{{driver}}'>{{driver}}</label><br />
     {% end %}
 
-    <h3>Controls</h3>
-    <button id='configure' class='btn btn-secondary'>Configure Car</button><br />
+    <h3>1c. Data Recording Configuration</h3>
+    <input id='custom-telemetry-path' type='checkbox'>
+    Record to: <input id='telemetry-path' disabled>Path here</input><br />
 
+    <p>
+        <button id='configure' class='btn btn-primary'>Configure Car</button>
+    </p>
+
+    <h2>Current Configuration</h2>
+    <h3>Parts</h3>
+    <pre id='current-configuration'><code></code>
+    </pre>
+    <h3>Data Channels</h3>
+    <div id='data-channels'></div>
+
+
+    <h2>2. Start Car</h2>
     <div id='drive-controls'>
         <button id='toggle-drive' class='btn btn-primary btn-large'>Start</button>
     </div>
 
-    <h2>Data Collection</h2>
-    <input id='custom-telemetry-path' type='checkbox'>
 
-    Record to: <input id='telemetry-path' disabled>Path here</input><br />
     Throttle constrain?<br />
 </div>
 
 <script type='text/javascript'>
     let config;
+    var parts;
+    var dataChannels;
     //let observer = new Proxy();
     $(document).ready(function() {
         $("#toggle-drive").click(function() {
@@ -85,7 +101,30 @@
                     "path": path
                 },
                 success: function(data) {
-                    console.log(data);
+                    $("#current-configuration code").text(JSON.stringify(data, undefined, 2));
+                    parts = data;
+                    allChannels = [];
+                    console.log(parts['parts']);
+                    for (part of parts['parts']) {
+                        for (i of part['inputs']) {
+                            if (!allChannels.includes(i)) {
+                                allChannels.push(i);
+                            }
+                        }
+                        for (o of part['outputs']) {
+                            if (!allChannels.includes(o)) {
+                                allChannels.push(o);
+                            }
+                        }
+                    }
+                    dataChannels = allChannels;
+
+                    $("#data-channels").text(JSON.stringify(dataChannels));
+                    /*
+                    $.each(dataChannels, function(channel) {
+                        $("<input />").attr("")
+                    });
+                    */
                 }
             });
             

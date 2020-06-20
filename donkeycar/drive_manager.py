@@ -58,8 +58,11 @@ class ConfigHandler(tornado.web.RequestHandler):
         print(config)
         print("path: ")
         print(path)
-        configure(config, path)
-        self.write(config)
+        parts = configure(config, path)
+        parts_description = document_parts(parts)
+        
+        self.write(parts_description)
+
         
 
 
@@ -128,6 +131,9 @@ def configure(config, path= None):
     remove_existing_parts()
     add_parts(parts)
     vehicle.set_config(path = path)
+    # report back parts
+
+    return parts
 
 def remove_existing_parts():
     for p in vehicle.parts:
@@ -139,9 +145,10 @@ def remove_existing_parts():
 def add_parts(parts):
     # Add parts
 
-    ordered_parts = instantiate(parts)
+    ordered_parts = rearrange_parts(parts)
     for part in ordered_parts:
         vehicle.add_part(part['part'], inputs=part['inputs'], outputs=part['outputs'], threaded=part['threaded'])
+        print(part)
 
 
 class toobj(object):
@@ -149,7 +156,7 @@ class toobj(object):
         self.__dict__ = d
 
 
-def instantiate(parts):
+def rearrange_parts(parts):
     # Determine parts dependency order
     # then create new vehicle object
 
@@ -174,6 +181,19 @@ def instantiate(parts):
         print(remainder)
 
     return ordered_parts
+
+
+def document_parts(parts):
+    docs = []
+    for part in parts:
+        docs.append({
+            'part': part['part'].__class__.__name__,
+            'inputs': part['inputs'],
+            'outputs': part['outputs'],
+            'threaded': part['threaded']
+        })
+
+    return {"parts": docs}
 
 
 def main(configfile):
