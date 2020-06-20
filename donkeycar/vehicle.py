@@ -7,6 +7,7 @@ Created on Sun Jun 25 10:44:24 2017
 """
 
 import time
+from itertools import cycle
 from statistics import median
 from threading import Thread
 import threading
@@ -234,6 +235,9 @@ class Vehicle:
             # Pre-start checking
             self.telemetry.save_vehicle_configuration(self.parts)
 
+            # Pre-start checking
+            self.telemetry.save_vehicle_configuration(self.parts)
+
             # wait until the parts warm up.
             print('Starting vehicle...')
 
@@ -244,6 +248,14 @@ class Vehicle:
 
                 # update all third party sensors
                 self.update_parts()
+                # update system parts
+
+                # record telemetry
+                #if self.telemetry.get(['recording'])[0]:
+                if self.is_recording:
+                    self.telemetry.record()
+
+                # then update driver
 
                 # record telemetry
                 if self.telemetry.get(['recording'])[0]:

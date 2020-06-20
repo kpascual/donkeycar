@@ -86,18 +86,7 @@ class CreateCar(BaseCommand):
         for fp in folder_paths:
             make_dir(fp)
             
-        #add car application and config files if they don't exist
-        app_template_path = os.path.join(TEMPLATES_PATH, template+'.py')
-        config_template_path = os.path.join(TEMPLATES_PATH, 'cfg_' + template + '.py')
-        myconfig_template_path = os.path.join(TEMPLATES_PATH, 'defaults.yml')
-        train_template_path = os.path.join(TEMPLATES_PATH, 'train.py')
-        manager_template_path = os.path.join(TEMPLATES_PATH, 'manager.py')
 
-        car_app_path = os.path.join(path, 'manage.py')
-        car_config_path = os.path.join(path, 'config.py')
-        mycar_config_path = os.path.join(path, 'defaults.yml')
-        train_app_path = os.path.join(path, 'train.py')
-        manager_app_path = os.path.join(path, 'manager.py')
         files = [
             (os.path.join(TEMPLATES_PATH, template+'.py'), os.path.join(path, 'manage.py')),
             (os.path.join(TEMPLATES_PATH, 'cfg_' + template + '.py'), os.path.join(path, 'config.py')),
@@ -109,49 +98,6 @@ class CreateCar(BaseCommand):
         for f in files:
             self._copyTemplate(f[0], f[1])
 
-        """ 
-        if os.path.exists(car_app_path) and not overwrite:
-            print('Car app already exists. Delete it and rerun createcar to replace.')
-        else:
-            print("Copying car application template: {}".format(template))
-            shutil.copyfile(app_template_path, car_app_path)
-            
-        if os.path.exists(car_config_path) and not overwrite:
-            print('Car config already exists. Delete it and rerun createcar to replace.')
-        else:
-            print("Copying car config defaults. Adjust these before starting your car.")
-            shutil.copyfile(config_template_path, car_config_path)
- 
-        if os.path.exists(train_app_path) and not overwrite:
-            print('Train already exists. Delete it and rerun createcar to replace.')
-        else:
-            print("Copying train script. Adjust these before starting your car.")
-            shutil.copyfile(train_template_path, train_app_path)
-
-        if os.path.exists(manager_app_path) and not overwrite:
-            print('Drive Manager already exists. Delete it and rerun createcar to replace.')
-        else:
-            print("Copying manager script. Adjust these before starting your car.")
-            shutil.copyfile(manager_template_path, manager_app_path)
-        """ 
-
-        if not os.path.exists(mycar_config_path):
-            print("Copying my car config overrides")
-            shutil.copyfile(myconfig_template_path, mycar_config_path)
-            #now copy file contents from config to myconfig, with all lines commented out.
-            cfg = open(car_config_path, "rt")
-            mcfg = open(mycar_config_path, "at")
-            copy = False
-            for line in cfg:
-                if "import os" in line:
-                    copy = True
-                if copy: 
-                    mcfg.write("# " + line)
-            cfg.close()
-            mcfg.close()
-
- 
-        print("Donkey setup complete.")
 
     def _copyTemplate(self, source_path, dest_path):
         if os.path.exists(dest_path) and not overwrite:
@@ -159,6 +105,59 @@ class CreateCar(BaseCommand):
         else:
             print("Copying template {} to {}. Adjust these before starting your car.".format(source_path, dest_path))
             shutil.copyfile(source_path, dest_path)
+
+
+class CreateSchool(BaseCommand):
+    def parse_args(self, args):
+        parser = argparse.ArgumentParser(prog='school', usage='%(prog)s [options]')
+        parser.add_argument('--path', default=None, help='path where to create school folder')
+        parser.add_argument('--template', default=None, help='name of school template to use')
+        parser.add_argument('--overwrite', action='store_true', help='should replace existing files')
+        
+        parsed_args = parser.parse_args(args)
+        return parsed_args
+
+    def run(self, args):
+        args = self.parse_args(args)
+        self.create_school(path=args.path, template=args.template, overwrite=args.overwrite)
+
+    def create_school(self, path, template='school', overwrite=False):
+        #these are neeeded incase None is passed as path
+        path = path or '~/school'
+        template = template or 'complete'
+
+
+        print("Creating school folder: {}".format(path))
+        path = make_dir(path)
+        
+        print("Creating data & model folders.")
+        folders = ['drivers', 'drive_session_data']
+        folder_paths = [os.path.join(path, f) for f in folders]   
+        for fp in folder_paths:
+            make_dir(fp)
+            
+        # copy template files
+        train_template_path = os.path.join(TEMPLATES_PATH, 'train.py')
+        train_app_path = os.path.join(path, 'train.py')
+        nn_template_path = os.path.join(TEMPLATES_PATH, 'nn/')
+        nn_scripts_path = os.path.join(path, 'nn')
+        
+        if os.path.exists(train_app_path) and not overwrite:
+            print('train.py already exists. Delete it and rerun createschool to replace.')
+        else:
+            print("Copying train script.")
+            shutil.copyfile(train_template_path, train_app_path)
+
+        # copy neural network sample files
+        if os.path.exists(nn_scripts_path) and not overwrite:
+            print('Keras models directory already exists. Delete it and rerun createschool to replace.')
+        else:
+            print("Copying sample keras models: {}".format(template))
+            shutil.copytree(nn_template_path, nn_scripts_path)
+
+        print("School setup complete.") 
+        
+
 
 
 class UpdateCar(BaseCommand):
@@ -492,7 +491,7 @@ class ShowPredictionPlots(BaseCommand):
             model_type = cfg.DEFAULT_MODEL_TYPE
         model.load(model_path)
 
-        records = gather_records(cfg, tub_paths)
+        records = gather_records(cfg.DATA_PATH, tub_paths)
         user_angles = []
         user_throttles = []
         pilot_angles = []
@@ -541,7 +540,6 @@ class ShowPredictionPlots(BaseCommand):
         parser.add_argument('--tub', nargs='+', help='paths to tubs')
         parser.add_argument('--model', default=None, help='name of record to create histogram')
         parser.add_argument('--limit', default=1000, help='how many records to process')
-        parser.add_argument('--type', default=None, help='model type')
         parser.add_argument('--config', default='./config.py', help='location of config file to use. default: ./config.py')
         parsed_args = parser.parse_args(args)
         return parsed_args
@@ -559,6 +557,7 @@ def execute_from_command_line():
     """
     commands = {
             'createcar': CreateCar,
+            'createschool': CreateSchool,
             'findcar': FindCar,
             'calibrate': CalibrateCar,
             'tubclean': TubManager,
