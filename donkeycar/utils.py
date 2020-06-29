@@ -131,7 +131,7 @@ def img_crop(img_arr, top, bottom):
     return img_arr[top:end, ...]
 
 
-def normalize_and_crop(img_arr, crop_top = 0, crop_bottom = 0, cfg = None):
+def normalize_and_crop(img_arr, crop_top = 0, crop_bottom = 0):
     img_arr = img_arr.astype(np.float32) * one_byte_scale
     if crop_top or crop_bottom:
         img_arr = img_crop(img_arr, crop_top, crop_bottom)
@@ -153,7 +153,7 @@ def load_scaled_image_arr(filename, cfg):
         if img.height != cfg.IMAGE_H or img.width != cfg.IMAGE_W:
             img = img.resize((cfg.IMAGE_W, cfg.IMAGE_H))
         img_arr = np.array(img)
-        img_arr = normalize_and_crop(img_arr, cfg)
+        img_arr = normalize_and_crop(img_arr, cfg.ROI_CROP_TOP, cfg.ROI_CROP_BOTTOM)
         croppedImgH = img_arr.shape[0]
         croppedImgW = img_arr.shape[1]
         if img_arr.shape[2] == 3 and cfg.IMAGE_DEPTH == 1:
@@ -162,8 +162,31 @@ def load_scaled_image_arr(filename, cfg):
         print(e)
         print('failed to load image:', filename)
         img_arr = None
+
     return img_arr
 
+def load_scaled_image_arr2(filename, cfg):
+    '''
+    load an image from the filename, and use the cfg to resize if needed
+    also apply cropping and normalize
+    '''
+    import donkeycar as dk
+    try:
+        img = Image.open(filename)
+        if img.height != cfg['IMAGE_H'] or img.width != cfg['IMAGE_W']:
+            img = img.resize((cfg['IMAGE_W'], cfg['IMAGE_H']))
+        img_arr = np.array(img)
+        img_arr = normalize_and_crop(img_arr, cfg['ROI_CROP_TOP'], cfg['ROI_CROP_BOTTOM'])
+        croppedImgH = img_arr.shape[0]
+        croppedImgW = img_arr.shape[1]
+        if img_arr.shape[2] == 3 and cfg['IMAGE_DEPTH'] == 1:
+            img_arr = dk.utils.rgb2gray(img_arr).reshape(croppedImgH, croppedImgW, 1)
+    except Exception as e:
+        print(e)
+        print('failed to load image:', filename)
+        img_arr = None
+
+    return img_arr
 
 '''
 FILES

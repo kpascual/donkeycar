@@ -153,6 +153,9 @@ class Vehicle:
     def add_part(self, part, inputs=[], outputs=[], threaded=False, run_condition=None):
         self.add(part, inputs, outputs, threaded=threaded, run_condition=run_condition)
 
+    def initialize_channel_data(self, channels, values):
+        self.telemetry.put(channels, values)
+
     def add(self, part, inputs=[], outputs=[],
             threaded=False, run_condition=None):
         """

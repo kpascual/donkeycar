@@ -1,3 +1,4 @@
+import json
 import socket
 import zlib, pickle
 import zmq
@@ -319,10 +320,12 @@ class MQTTValuePub(object):
         print("connected.")
 
     def run(self, values):
+        topic = self.name
         packet = { "name": self.name, "val" : values }
         p = pickle.dumps(packet)
         z = zlib.compress(p)
-        self.client.publish(self.name, z)
+        #self.client.publish(topic, json.dumps(packet))
+        self.client.publish(topic, values)
 
     def shutdown(self):
         self.client.disconnect()
