@@ -7,6 +7,7 @@ Created on Sun Jun 25 10:44:24 2017
 """
 
 import time
+import os
 from itertools import cycle
 from statistics import median
 from threading import Thread
@@ -16,7 +17,7 @@ from prettytable import PrettyTable
 from donkeycar.parts.datastore import TubHandler
 
 # How quickly do certain parts run? (e.g. is the drive loop efficient?)
-# This is different than telemetry data outputted by the parts
+# This is different than data outputted by the parts
 class PartProfiler:
     def __init__(self):
         self.records = {}
@@ -55,43 +56,37 @@ class PartProfiler:
         print(pt)
 
 
-# Rename Telemetry to TelemetryRecorder
-# Rename Memory to Telemetry
-# responsibilities: 1) where to save it 2) what info to save
-class Telemetry:
-    def __init__(self, path):
-        print(path)
-        self.th = TubHandler(path=path)
+class DataRecorder:
+    def __init__(self, root_path):
+        self.root_path = root_path
         self.mem = Memory()
+        self.path = None
 
-        self.inputs=[
-            'cam/image_array',
-            'user/angle', 
-            'user/throttle', 
-            'angle',
-            'throttle',
-            'user/mode',
-            'beacons/beacon1',
-            'beacons/beacon2',
-            'beacons/beacon3',
-        ]
-        self.types=[
-            'image_array',
-            'float', 
-            'float',
-            'float', 
-            'float',
-            'str',
-            'int',
-            'int',
-            'int'
-        ]
+        self.inputs = ()
+        self.types = ()
         self.tub = None
+        self.tub_handler = TubHandler(path=self.root_path)
 
 
-    def create_tub(self, path = None):
-        print("Path found:" + path)
-        self.tub = self.th.new_tub_writer(inputs=self.inputs, types=self.types, path=path)
+    def create_tub(self):
+        print(self.inputs)
+        print(self.types)
+        self.tub = self.tub_handler.new_tub_writer(inputs=self.inputs, types=self.types)
+
+    def set_path(self, path):
+        self.path = path
+        self.tub_handler.path = os.path.join(self.root_path, self.path)
+
+    def initialize_recorder(self):
+        # Create tub
+        self.create_tub()
+        # Initialize default channel values
+        for channel_name, data_type in zip(self.inputs, self.types):
+            if data_type == 'float':
+                self.put([channel_name], [0.0])
+                print("channel name initialized")
+                print(channel_name)
+            
 
 
     def save_vehicle_configuration(self, parts):
@@ -104,11 +99,19 @@ class Telemetry:
     def save_end_time(self):
         self.tub.end_time = time.time()
 
+    def set_inputs(self, inputs):
+        print("set inputs")
+        print(inputs)
+        self.inputs = inputs
+
+    def set_types(self, types):
+        print("set types")
+        print(types)
+        self.types = types
 
     def record(self):
         inputs = self.mem.get(self.inputs)
         self.tub.run(*inputs)
-
 
     def get(self, keys):
         return self.mem.get(keys)
@@ -117,12 +120,13 @@ class Telemetry:
         self.mem.put(keys, inputs)
 
     def cleanup_postsession(self):
-        self.save_end_time()
-        self.tub.write_meta()
+        if self.tub is not None:
+            self.save_end_time()
+            self.tub.write_meta()
 
 
 class Vehicle:
-    def __init__(self, cfg, mem=None):
+    def __init__(self, data_path, mem=None):
 
         if not mem:
             mem = Memory()
@@ -132,8 +136,7 @@ class Vehicle:
         self.on = True
         self.threads = []
         self.profiler = PartProfiler()
-        self.cfg = cfg
-        self.telemetry = Telemetry(cfg.DATA_PATH)
+        self.data_recorder = DataRecorder(data_path)
         self.channels = []
 
         # States that used to be in mem
@@ -147,14 +150,35 @@ class Vehicle:
     def change_driver(self):
         pass
 
-    def set_config(self, path = None):
-        self.telemetry.create_tub(path)
+    def set_channels(self, channels):
+        self.channels = channels.copy()
+        print(self.channels)
+
+    def set_data_recorder_config(self, inputs=None, path=None):
+        print("set data recorder config")
+        if inputs is not None:
+            print("inputs:")
+            print(inputs)
+            print("existing channels:")
+            print(self.channels)
+            inputs = [c[0] for c in self.channels if c[0] in inputs]
+            types = [c[1] for c in self.channels if c[0] in inputs]
+            print(inputs)
+            print(types)
+            self.data_recorder.set_inputs(inputs)
+            self.data_recorder.set_types(types)
+
+        if path is not None:
+            self.data_recorder.set_path(path)
+
 
     def add_part(self, part, inputs=[], outputs=[], threaded=False, run_condition=None):
         self.add(part, inputs, outputs, threaded=threaded, run_condition=run_condition)
 
     def initialize_channel_data(self, channels, values):
-        self.telemetry.put(channels, values)
+        for channel_name, data_type in self.channels:
+            if data_type == 'float':
+                self.data_recorder.put([channel_name], [0.0])
 
     def add(self, part, inputs=[], outputs=[],
             threaded=False, run_condition=None):
@@ -190,9 +214,6 @@ class Vehicle:
         self.parts.append(entry)
         self.profiler.profile_part(part)
 
-        self.channels.extend([i for i in inputs if i not in self.channels])
-        self.channels.extend([o for o in outputs if o not in self.channels])
-
     def remove(self, part):
         """
         remove part form list
@@ -224,6 +245,9 @@ class Vehicle:
             self.on = True
 
             for entry in self.parts:
+                if hasattr(entry['part'], 'prestart'):
+                    entry['part'].prestart()
+
                 if entry.get('threaded'):
                     # start the update thread
                     t = Thread(target=entry['part'].update, args=())
@@ -236,10 +260,8 @@ class Vehicle:
                     entry['part'].running = True
 
             # Pre-start checking
-            self.telemetry.save_vehicle_configuration(self.parts)
-
-            # Pre-start checking
-            self.telemetry.save_vehicle_configuration(self.parts)
+            self.data_recorder.initialize_recorder()
+            self.data_recorder.save_vehicle_configuration(self.parts)
 
             # wait until the parts warm up.
             print('Starting vehicle...')
@@ -254,15 +276,8 @@ class Vehicle:
                 # update system parts
 
                 # record telemetry
-                #if self.telemetry.get(['recording'])[0]:
-                if self.is_recording:
-                    self.telemetry.record()
-
-                # then update driver
-
-                # record telemetry
-                if self.telemetry.get(['recording'])[0]:
-                    self.telemetry.record()
+                if self.data_recorder.get(['recording'])[0]:
+                    self.data_recorder.record()
 
                 # then update driver
 
@@ -297,7 +312,7 @@ class Vehicle:
             # check run condition, if it exists
             if entry.get('run_condition'):
                 run_condition = entry.get('run_condition')
-                run = self.telemetry.get([run_condition])[0]
+                run = self.data_recorder.get([run_condition])[0]
             
             if run:
                 # get part
@@ -305,7 +320,7 @@ class Vehicle:
                 # start timing part run
                 self.profiler.on_part_start(p)
                 # get inputs from memory
-                inputs = self.telemetry.get(entry['inputs'])
+                inputs = self.data_recorder.get(entry['inputs'])
                 # run the part
                 if entry.get('thread'):
                     outputs = p.run_threaded(*inputs)
@@ -314,7 +329,7 @@ class Vehicle:
 
                 # save the output to memory
                 if outputs is not None:
-                    self.telemetry.put(entry['outputs'], outputs)
+                    self.data_recorder.put(entry['outputs'], outputs)
                 # finish timing part run
                 self.profiler.on_part_finished(p)
 
@@ -334,5 +349,5 @@ class Vehicle:
             except Exception as e:
                 print(e)
 
-        self.telemetry.cleanup_postsession()
+        self.data_recorder.cleanup_postsession()
         self.profiler.report()

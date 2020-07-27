@@ -331,7 +331,8 @@ class Tub(object):
 
             #load objects that were saved as separate files
             if typ == 'image_array':
-                img = Image.open((val))
+                path = os.path.join(self.path, val)
+                img = Image.open((path))
                 val = np.array(img)
 
             data[key] = val
@@ -512,17 +513,18 @@ class TubHandler():
             return num
 
         folders = self.get_tub_list(path)
-        numbers = [get_tub_num(x) for x in folders]
+        numbers = [get_tub_num(x) for x in os.walk(path)]
         #numbers = [i for i in numbers if i is not None]
         next_number = max(numbers+[0]) + 1
         return next_number
 
     def create_tub_path(self):
-        tub_num = self.next_tub_number(self.path)
-        date = datetime.datetime.now().strftime('%y-%m-%d')
-        name = '_'.join(['tub',str(tub_num),date])
+        name = self.get_default_path()
         tub_path = os.path.join(self.path, name)
         return tub_path
+
+    def get_default_path(self):
+        return datetime.datetime.now().strftime('%y-%m-%d_%H-%M-%S')
 
     def new_tub_writer(self, inputs, types, user_meta=[], path=None):
         if path:
@@ -530,8 +532,6 @@ class TubHandler():
         else:
             tub_path = self.create_tub_path()
         
-        
-        print("tub path: " + tub_path)
         tw = TubWriter(path=tub_path, inputs=inputs, types=types, user_meta=user_meta)
         return tw
 

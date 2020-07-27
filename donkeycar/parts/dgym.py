@@ -22,15 +22,25 @@ class DonkeyGymEnv(object):
             if not is_exe(sim_path):
                 raise Exception("The path you provided is not an executable.") 
 
-        self.env = gym.make(env_name, exe_path=sim_path, host=host, port=port)
-        self.frame = self.env.reset()
+        self.host = host
+        self.port = port
+        self.sim_path = sim_path
+        self.env_name = env_name
+        self.conf = conf
         self.action = [0.0, 0.0]
-        self.running = True
-        self.info = { 'pos' : (0., 0., 0.)}
+        self.running = False
+        self.info = { 'pos' : (0., 0., 0.), 'speed': 0.0}
         self.delay = float(delay)
 
-        if "body_style" in conf:
-            self.env.viewer.set_car_config(conf["body_style"], conf["body_rgb"], conf["car_name"], conf["font_size"])
+
+    def prestart(self):
+        self.running = True
+
+        self.env = gym.make(self.env_name, exe_path=self.sim_path, host=self.host, port=self.port)
+        self.frame = self.env.reset()
+
+        if "body_style" in self.conf:
+            self.env.viewer.set_car_config(self.conf["body_style"], self.conf["body_rgb"], self.conf["car_name"], self.conf["font_size"])
             #without this small delay, we seem to miss packets
             time.sleep(0.1)
 
@@ -45,7 +55,8 @@ class DonkeyGymEnv(object):
         if self.delay > 0.0:
             time.sleep(self.delay / 1000.0)
         self.action = [steering, throttle]
-        return self.frame
+
+        return self.frame, self.info['speed'], self.info['pos']
 
     def shutdown(self):
         self.running = False

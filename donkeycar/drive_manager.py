@@ -15,6 +15,7 @@ from docopt import docopt
 import tornado.ioloop
 import tornado.web
 import yaml
+import json
 
 import donkeycar as dk
 
@@ -27,7 +28,7 @@ root_dir = os.path.join(this_dir, "management/drive_manager")
 
 class ManagerHandler(tornado.web.RequestHandler):
     def get(self):
-        drivers = os.listdir('drivers')
+        drivers = [f.name for f in os.scandir('drivers') if f.is_dir() and f.name != '__pycache__']
         carconfigs = os.listdir('carconfigs')
         print(root_dir)
         self.render("home.html", drivers=drivers, carconfigs=carconfigs)
@@ -47,23 +48,49 @@ class DriveHandler(tornado.web.RequestHandler):
             stop()
 
 
-class ConfigHandler(tornado.web.RequestHandler):
+class CarConfigHandler(tornado.web.RequestHandler):
     def get(self):
-        self.render("config.html", config = cfg.__dict__)
+        self.render("config.html", config = cfg)
 
     def post(self):
         config = self.get_body_argument("config")
-        path = self.get_body_argument("path")
+        driver = self.get_body_argument("driver")
         print("config: ")
         print(config)
-        print("path: ")
-        print(path)
-        parts = configure(config, path)
-        parts_description = document_parts(parts)
+        if driver == 'manual':
+            driver = None
+        print(driver)
+        parts, channels = configure_car(config, driver)
+
+        return_dict = {
+            'parts': [],
+            'channels': channels
+        }
+        return_dict['parts'] = document_parts(parts)
         
-        self.write(parts_description)
+        self.write(return_dict)
 
         
+class RecorderConfigHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.render("config.html", config = cfg)
+
+    def post(self):
+        args = json.loads(self.request.body)
+        path = args['path']
+
+        print("path: ")
+        print(path)
+
+        print(args['channels'])
+        channels = args['channels']
+        print("channels: ")
+        print(channels)
+
+        configure_recorder(channels, path)
+
+        self.write('asdklfjd')
+
 
 
 def open_webui():
@@ -72,16 +99,22 @@ def open_webui():
     app = tornado.web.Application([
         ('/', ManagerHandler),
         ('/drive', DriveHandler),
-        ('/config', ConfigHandler),
+        ('/car_config', CarConfigHandler),
+        ('/recorder_config', RecorderConfigHandler),
         (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": static_file_path}),
     ], template_path = root_dir)
 
     app.listen(8889)
     tornado.ioloop.IOLoop.current().start()
 
+def instantiate_car(configfile):
 
-def instantiate_car():
-    pass
+    global cfg
+    cfg = yaml.load(open(configfile, 'r'), Loader=yaml.Loader)
+    #cfg = toobj(cfg)
+    
+    global vehicle
+    vehicle = dk.vehicle.Vehicle(cfg['DATA_PATH'])
 
 
 def check_car():
@@ -90,8 +123,8 @@ def check_car():
 
 def drive_car():
     V.start(
-        rate_hz=cfg.DRIVE_LOOP_HZ, 
-        max_loop_count=cfg.MAX_LOOPS
+        rate_hz=cfg['DRIVE_LOOP_HZ'], 
+        max_loop_count=cfg['MAX_LOOPS']
     )
 
 # Vehicle
@@ -111,7 +144,7 @@ def start():
     global vthread
 
     if vthread is None:
-        vthread = threading.Thread(target=vehicle.start, args=(cfg.DRIVE_LOOP_HZ, cfg.MAX_LOOPS))
+        vthread = threading.Thread(target=vehicle.start, args=(cfg['DRIVE_LOOP_HZ'], cfg['MAX_LOOPS']))
         vthread.is_on = True
         vthread.start()
 
@@ -124,16 +157,29 @@ def stop():
     print("thread stopped")
 
 
-def configure(config, path= None):
-    oldconfig = dk.load_config('carconfigs/' + config)
-    parts, oldCFG = oldconfig.MAIN()
+def configure_car(configname, driver = None):
+    carconfig = dk.load_config('carconfigs/' + configname)
+    parts, channels = carconfig.MAIN(driver_name = driver)
 
+    # 1. set parts
     remove_existing_parts()
     add_parts(parts)
-    vehicle.set_config(path = path)
-    # report back parts
+    channel_names = [c[0] for c in channels] 
+    vehicle.set_channels(channels)
+    vehicle.set_data_recorder_config(inputs=channel_names)
 
-    return parts
+    return parts, channel_names
+
+def configure_recorder(inputs = None, path = None):
+    print("configure recorder")
+    print(inputs)
+    if inputs is not None:
+        vehicle.set_data_recorder_config(inputs=inputs)
+    
+    if path is not None:
+        vehicle.set_data_recorder_config(path = path)
+
+    
 
 def remove_existing_parts():
     for p in vehicle.parts:
@@ -145,10 +191,10 @@ def remove_existing_parts():
 def add_parts(parts):
     # Add parts
 
-    ordered_parts = rearrange_parts(parts)
-    for part in ordered_parts:
+    #ordered_parts = rearrange_parts(parts)
+    for part in parts:
         vehicle.add_part(part['part'], inputs=part['inputs'], outputs=part['outputs'], threaded=part['threaded'])
-        print(part)
+        #print(part)
 
 
 class toobj(object):
@@ -193,17 +239,16 @@ def document_parts(parts):
             'threaded': part['threaded']
         })
 
-    return {"parts": docs}
+    return docs
 
 
 def main(configfile):
 
     global cfg
-    cfg = yaml.load(open(configfile, 'r'))
-    cfg = toobj(cfg)
+    cfg = yaml.load(open(configfile, 'r'), Loader=yaml.Loader)
     
     global vehicle
-    vehicle = dk.vehicle.Vehicle(cfg)
+    vehicle = dk.vehicle.Vehicle(cfg['DATA_PATH'])
 
     open_webui()
 

@@ -1,40 +1,62 @@
 {% extends "base.html" %}
 
 {% block content %}
+
 <div class="container-fluid">
-    <h2>1. Configure Car</h2>
 
-    <h3>1a. Car Setup</h3>
-    {% for config in carconfigs %}
-        <input name='config' id='config-{{config}}' type='radio' value='{{config}}'><label for='config-{{config}}'>{{config}}</label><br />
-    {% end %}
+    <h1>Donkey Car Drive Manager</h1>
 
-    <h3>1b. Driver</h3>
-        <input name='driver' id='driver-manual' type='radio' value='manual' checked><label for='driver-manual'>Manual</label><br />
-    {% for driver in drivers %}
-        <input name='driver' id='driver-{{driver}}' type='radio' value='{{driver}}'><label for='driver-{{driver}}'>{{driver}}</label><br />
-    {% end %}
+    <div class='row'>
+        <div class='col-md-6'>
+            <h2>1. Car Setup</h2>
+            <div class='row'>
+                <div class='col-md-6'>
+                    <h3>1a. Parts</h3>
+                    {% for config in carconfigs %}
+                        <input name='config' id='config-{{config}}' type='radio' value='{{config}}'><label for='config-{{config}}'>{{config}}</label><br />
+                    {% end %}
+                </div>
+                <div class='col-md-6'>
+                    <h3>1b. AI Driver</h3>
+                    <input name='driver' id='driver-manual' type='radio' value='manual' checked><label for='driver-manual'>None (default)</label><br />
+                    {% for driver in drivers %}
+                        <input name='driver' id='driver-{{driver}}' type='radio' value='{{driver}}'><label for='driver-{{driver}}'>{{driver}}</label><br />
+                    {% end %}
+                </div>
+            </div>
 
-    <h3>1c. Data Recording Configuration</h3>
-    <input id='custom-telemetry-path' type='checkbox'>
-    Record to: <input id='telemetry-path' disabled>Path here</input><br />
+            <p>
+                <button id='configure-parts' class='btn btn-secondary'>Instantiate Vehicle</button>
+            </p>
 
-    <p>
-        <button id='configure' class='btn btn-primary'>Configure Car</button>
-    </p>
-
-    <h2>Current Configuration</h2>
-    <h3>Parts</h3>
-    <pre id='current-configuration'><code></code>
-    </pre>
-    <h3>Data Channels</h3>
-    <div id='data-channels'></div>
+            <h2>2. Data Recording Configuration</h2>
+            <h3>Drive Session Name (path to save data)</h3>
+            <input id='custom-telemetry-path' type='checkbox'>
+            Record to: <input id='telemetry-path' disabled>Path here</input><br />
 
 
-    <h2>2. Start Car</h2>
-    <div id='drive-controls'>
-        <button id='toggle-drive' class='btn btn-primary btn-large'>Start</button>
+            <h3>Data Channels to Record</h3>
+            <div id='data-channels'></div>
+
+            <p>
+                <button id='configure-recorder' class='btn btn-secondary'>Set Data Recording Configuration</button>
+            </p>
+
+
+
+
+        </div>
+        <div class='col-md-6'>
+            <div id='drive-controls'>
+                <button id='toggle-drive' class='btn btn-primary btn-large btn-block' >Start Car</button>
+            </div>
+            <h3>Current Configuration</h3>
+            <pre id='parts'><code></code>
+            </pre>
+        </div>
     </div>
+
+
 
 
     Throttle constrain?<br />
@@ -44,12 +66,13 @@
     let config;
     var parts;
     var dataChannels;
+
     //let observer = new Proxy();
     $(document).ready(function() {
         $("#toggle-drive").click(function() {
             let val = $(this).text();
             let that = this;
-            if (val == "Start") {
+            if (val == "Start Car") {
                 // start drive
                 $.ajax({
                     type: "POST",
@@ -72,7 +95,7 @@
                     data: {"command": "stop"},
                     success: function(data) {
                         console.log(data);
-                        $(that).text("Start"); 
+                        $(that).text("Start Car"); 
                     }
                 });
             }
@@ -86,8 +109,9 @@
         });
 
 
-        $("#configure").click(function(){
+        $("#configure-parts").click(function(){
             let config = $('input[name="config"]:checked').val();
+            let driver = $('input[name="driver"]:checked').val();
             let path = null;
 
             if ($("#custom-telemetry-path").prop('checked')) {
@@ -95,34 +119,57 @@
             }            
             $.ajax({
                 type: "POST",
-                url: "config", 
+                url: "car_config", 
                 data: {
                     "config": config,
-                    "path": path
+                    "path": path,
+                    "driver": driver
                 },
                 success: function(data) {
-                    $("#current-configuration code").text(JSON.stringify(data, undefined, 2));
-                    parts = data;
-                    allChannels = [];
-                    console.log(parts['parts']);
-                    for (part of parts['parts']) {
-                        for (i of part['inputs']) {
-                            if (!allChannels.includes(i)) {
-                                allChannels.push(i);
-                            }
-                        }
-                        for (o of part['outputs']) {
-                            if (!allChannels.includes(o)) {
-                                allChannels.push(o);
-                            }
-                        }
-                    }
-                    dataChannels = allChannels;
+                    $("#parts code").text(JSON.stringify(data['parts'], undefined, 2));
+                    channels = data['channels'];
 
-                    $("#data-channels").text(JSON.stringify(dataChannels));
+                    //$("#data-channels").text(JSON.stringify(dataChannels));
+                    divDataChannels = $('#data-channels');
+                    channels.forEach(function(channel) {
+                        console.log(channel);
+                        divDataChannels.append(
+                            $("<label><input type='checkbox' name='recordedChannels' value='" + channel + "' checked/>" + channel + "</label><br />")
+                        );
+                    });
+                }
+            });
+            
+        });
+        $("#configure-recorder").click(function(){
+            let channels = [];
+            $('input[name="recordedChannels"]:checked').each(function(){
+                channels.push($(this).val());
+            });
+            let path = null;
+
+            if ($("#custom-telemetry-path").prop('checked')) {
+                path = $("#telemetry-path").val();
+            }            
+            console.log(channels);
+            $.ajax({
+                type: "POST",
+                url: "recorder_config", 
+                data: JSON.stringify({
+                    "channels": channels,
+                    "path": path,
+                }),
+                success: function(data) {
+                    channels = data['channels'];
+
+                    //$("#data-channels").text(JSON.stringify(dataChannels));
+                    divDataChannels = $('#data-channels');
                     /*
-                    $.each(dataChannels, function(channel) {
-                        $("<input />").attr("")
+                    channels.forEach(function(channel) {
+                        console.log(channel);
+                        divDataChannels.append(
+                            $("<label><input type='checkbox' name='recordedChannels' value='" + channel + "' checked/>" + channel + "</label><br />")
+                        );
                     });
                     */
                 }
