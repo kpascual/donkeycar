@@ -3,39 +3,34 @@
 Vehicle configuration file to control a car through a Raspberry Pi
 """
 import os
-from docopt import docopt
 import yaml
 import donkeycar as dk
 
-#import parts
-from donkeycar.parts.controller import get_js_controller
+from donkeycar.parts.controller import get_js_controller2
 from donkeycar.parts.dgym import DonkeyGymEnv
 from donkeycar.parts.network import MQTTValuePub
-from tensorflow.python import keras
 
 
-def MAIN(configfile = 'defaults.yml', model_path = None):
-    cfg = dk.load_config()
-    CFG = cfg
-
+def MAIN(configfile = 'defaults.yml', driver_name = None):
     parts = []
     newcfg = yaml.load(open(configfile, 'r'))
-    print(newcfg)
-
-    
-
 
     # ensure we don't run out of resources using cuda
     os.environ["CUDA_VISIBLE_DEVICES"]="-1"
-
-    
 
     # 1. power train
     # No drive train on the gym
 
     # 2. driver
     #drivers = []
-    ctr = get_js_controller(cfg)
+    ctr = get_js_controller2(
+        controller_type = newcfg['CONTROLLER_TYPE'],
+        joystick_throttle_dir = newcfg['JOYSTICK_THROTTLE_DIR'], 
+        joystick_max_throttle = newcfg['JOYSTICK_MAX_THROTTLE'], 
+        joystick_steering_scale = newcfg['JOYSTICK_STEERING_SCALE'], 
+        auto_record_on_throttle = newcfg['AUTO_RECORD_ON_THROTTLE'], 
+        joystick_deadzone = newcfg['JOYSTICK_DEADZONE']
+    )
 
     # 3. sensors
     print(newcfg['DONKEY_SIM_PATH'])
@@ -60,7 +55,7 @@ def MAIN(configfile = 'defaults.yml', model_path = None):
         {
             'part': cam, 
             'inputs': ['angle', 'throttle'], 
-            'outputs': ['cam/image_array'], 
+            'outputs': ['cam/image_array','speed', 'pos'], 
             'threaded': True
         },
         {
@@ -82,8 +77,18 @@ def MAIN(configfile = 'defaults.yml', model_path = None):
             'threaded': False
         },
     ]
+
+    channels = [
+        ('cam/image_array', 'image_array'),
+        ('angle', 'float'),
+        ('throttle', 'float'),
+        ('speed', 'float'),
+        ('pos', 'vector'),
+        ('user/mode', 'str'),
+        ('recording', 'boolean'),
+    ]
  
-    return parts, CFG
+    return parts, channels
 
 
 

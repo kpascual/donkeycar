@@ -1431,6 +1431,35 @@ def get_js_controller(cfg):
     ctr.set_deadzone(cfg.JOYSTICK_DEADZONE)
     return ctr
 
+def get_js_controller2(controller_type, joystick_throttle_dir, joystick_max_throttle, joystick_steering_scale, auto_record_on_throttle, joystick_deadzone):
+    cont_class = None
+    if controller_type == "ps3":
+        cont_class = PS3JoystickController
+    elif controller_type == "ps4":
+        cont_class = PS4JoystickController
+    elif controller_type == "nimbus":
+        cont_class = NimbusController
+    elif controller_type == "xbox":
+        cont_class = XboxOneJoystickController
+    elif controller_type == "wiiu":
+        cont_class = WiiUController
+    elif controller_type == "F710":
+        cont_class = LogitechJoystickController
+    elif controller_type == "rc3":
+        cont_class = RC3ChanJoystickController
+    else:
+        raise("Unknown controller type: " + controller_type)
+
+    ctr = cont_class(
+        throttle_dir = joystick_throttle_dir,
+        throttle_scale = joystick_max_throttle,
+        steering_scale = joystick_steering_scale,
+        auto_record_on_throttle = auto_record_on_throttle
+    )
+
+    ctr.set_deadzone(joystick_deadzone)
+    return ctr
+
 if __name__ == "__main__":
     '''
     publish ps3 controller

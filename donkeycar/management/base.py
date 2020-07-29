@@ -94,6 +94,7 @@ class CreateCar(BaseCommand):
             (os.path.join(TEMPLATES_PATH, 'train.py'), os.path.join(path, 'train.py')),
             (os.path.join(TEMPLATES_PATH, 'manager.py'), os.path.join(path, 'manager.py')),
             (os.path.join(TEMPLATES_PATH, 'drive_basic.py'), os.path.join(path, 'carconfigs/drive_basic.py')),
+            (os.path.join(TEMPLATES_PATH, 'aigym.py'), os.path.join(path, 'carconfigs/aigym.py')),
         ]
         for f in files:
             self._copyTemplate(f[0], f[1])
