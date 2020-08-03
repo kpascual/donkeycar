@@ -10,10 +10,6 @@ def is_exe(fpath):
 class DonkeyGymEnv(object):
 
     def __init__(self, sim_path, host="127.0.0.1", port=9091, headless=0, env_name="donkey-generated-track-v0", sync="asynchronous", conf={}, delay=0):
-        os.environ['DONKEY_SIM_PATH'] = sim_path
-        os.environ['DONKEY_SIM_PORT'] = str(port)
-        os.environ['DONKEY_SIM_HEADLESS'] = str(headless)
-        os.environ['DONKEY_SIM_SYNC'] = str(sync)
 
         if sim_path != "remote":
             if not os.path.exists(sim_path):
@@ -29,20 +25,30 @@ class DonkeyGymEnv(object):
         self.conf = conf
         self.action = [0.0, 0.0]
         self.running = False
-        self.info = { 'pos' : (0., 0., 0.), 'speed': 0.0}
+        self.info = { 
+            'pos' : (0., 0., 0.), 
+            'gyro' : (0., 0., 0.), 
+            'accel' : (0., 0., 0.), 
+            'vel' : (0., 0., 0.), 
+            'speed': 0.0
+        }
         self.delay = float(delay)
 
 
     def prestart(self):
         self.running = True
+        conf = {
+            "exe_path": self.sim_path,
+            "host": self.host,
+            "port": self.port
+        }
+        self.conf['exe_path'] = self.sim_path
+        self.conf['host'] = self.host
+        self.conf['port'] = self.port
 
-        self.env = gym.make(self.env_name, exe_path=self.sim_path, host=self.host, port=self.port)
+        self.env = gym.make(self.env_name, conf=self.conf)
         self.frame = self.env.reset()
 
-        if "body_style" in self.conf:
-            self.env.viewer.set_car_config(self.conf["body_style"], self.conf["body_rgb"], self.conf["car_name"], self.conf["font_size"])
-            #without this small delay, we seem to miss packets
-            time.sleep(0.1)
 
     def update(self):
         while self.running:
@@ -56,7 +62,7 @@ class DonkeyGymEnv(object):
             time.sleep(self.delay / 1000.0)
         self.action = [steering, throttle]
 
-        return self.frame, self.info['speed'], self.info['pos']
+        return self.frame, self.info['speed'], self.info['pos'], self.info['gyro'], self.info['accel'], self.info['vel']
 
     def shutdown(self):
         self.running = False

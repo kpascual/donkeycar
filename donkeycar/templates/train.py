@@ -6,7 +6,7 @@ but faster training with proper sampling of distribution over tubs.
 
 
 Usage:
-    train.py --driver=<driver_name> --nn=<nn> --data=<tub1,tub2,..tubn>  [--config=<config>]
+    train.py --driver=<driver_name> --modelarchitecture=<ma> --data=<tub1,tub2,..tubn>  [--config=<config>]
 
 Options:
     -h --help              Show this screen.
@@ -30,15 +30,9 @@ from PIL import Image
 import yaml
 
 import donkeycar as dk
-from donkeycar.parts.datastore import Tub
-from donkeycar.parts.keras import KerasLinear, KerasIMU,\
-     KerasCategorical, KerasBehavioral, Keras3D_CNN,\
-     KerasRNN_LSTM, KerasLatent, KerasLocalizer
-from donkeycar.parts.augment import augment_image
-from donkeycar.utils import *
 from donkeycar import utils
-from nn import linear
 import matplotlib.pyplot as plt
+from donkeycar.parts.datastore import Tub
 
 figure_format = 'png'
 
@@ -140,7 +134,7 @@ def generator(records, batch_size, preprocess_X, preprocess_y):
                 batch_data = []
     
 
-def train(cfg, tub_names, driver_name, nn):
+def train(cfg, tub_names, driver_name, ma):
     '''
     use the specified data in tub_names to train an artifical neural network
     saves the output trained model as model_name
@@ -156,7 +150,7 @@ def train(cfg, tub_names, driver_name, nn):
     # Save training parameters
     # 1) tubs 2) keras model 3) hyperparameters
     training = {
-        'keras_model': nn,
+        'keras_model': ma,
         'data': tub_names
     }
     f = open(driver_path + '/training.json', 'w')
@@ -164,13 +158,13 @@ def train(cfg, tub_names, driver_name, nn):
     f.close()
 
     # Copy keras model to driver folder
-    source_keras_model_path = os.path.join(cfg['KERAS_MODEL_PATH'], nn + '.py')
-    dest_keras_model_path = os.path.join(driver_path, nn + '.py')
+    source_keras_model_path = os.path.join(cfg['MODEL_ARCHITECTURES_PATH'], ma + '.py')
+    dest_keras_model_path = os.path.join(driver_path, ma + '.py')
     shutil.copyfile(source_keras_model_path, dest_keras_model_path)
     
     model_name = driver_name + '/model.h5'
     
-    keras_model = importlib.import_module('nn.' + nn)
+    keras_model = importlib.import_module('model_architectures.' + ma)
     kl = keras_model.get()
     print('training with model type', type(kl))
 
@@ -351,11 +345,10 @@ def extract_data_from_pickles(root_path, tubs):
 
 if __name__ == "__main__":
     args = docopt(__doc__)
-    cfg = dk.load_config()
 
     driver = args['--driver']
     tubs = args['--data']
-    nn = args['--nn']
+    ma = args['--modelarchitecture']
     config = args['--config']
 
     if config:
@@ -369,4 +362,4 @@ if __name__ == "__main__":
         tub_paths = [os.path.expanduser(n) for n in tubs.split(',')]
         dirs.extend( tub_paths )
 
-    train(newcfg, dirs, driver, nn)
+    train(newcfg, dirs, driver, ma)

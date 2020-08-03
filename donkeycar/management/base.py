@@ -140,8 +140,12 @@ class CreateSchool(BaseCommand):
         # copy template files
         train_template_path = os.path.join(TEMPLATES_PATH, 'train.py')
         train_app_path = os.path.join(path, 'train.py')
-        nn_template_path = os.path.join(TEMPLATES_PATH, 'nn/')
-        nn_scripts_path = os.path.join(path, 'nn')
+
+        defaults_template_path = os.path.join(TEMPLATES_PATH, 'training_defaults.yml')
+        defaults_app_path = os.path.join(path, 'training_defaults.yml')
+
+        ma_template_path = os.path.join(TEMPLATES_PATH, 'model_architectures/')
+        ma_scripts_path = os.path.join(path, 'model_architectures')
         
         if os.path.exists(train_app_path) and not overwrite:
             print('train.py already exists. Delete it and rerun createschool to replace.')
@@ -150,11 +154,18 @@ class CreateSchool(BaseCommand):
             shutil.copyfile(train_template_path, train_app_path)
 
         # copy neural network sample files
-        if os.path.exists(nn_scripts_path) and not overwrite:
-            print('Keras models directory already exists. Delete it and rerun createschool to replace.')
+        if os.path.exists(ma_scripts_path) and not overwrite:
+            print('Models architectures directory already exists. Delete it and rerun createschool to replace.')
         else:
             print("Copying sample keras models: {}".format(template))
-            shutil.copytree(nn_template_path, nn_scripts_path)
+            shutil.copytree(ma_template_path, ma_scripts_path)
+
+        # training default parameters and hyperparameters
+        if os.path.exists(defaults_app_path) and not overwrite:
+            print('training_defaults.yml already exists. Delete it and rerun createschool to replace.')
+        else:
+            print("Copying defaults YAML .")
+            shutil.copyfile(defaults_template_path, defaults_app_path)
 
         print("School setup complete.") 
         

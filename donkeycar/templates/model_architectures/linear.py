@@ -21,7 +21,7 @@ from tensorflow.python.keras.layers import Convolution2D
 from tensorflow.python.keras.layers import Dropout, Flatten
 
 
-from nn.base import KerasPilot
+from model_architectures.base import KerasPilot
 
 import donkeycar as dk
 

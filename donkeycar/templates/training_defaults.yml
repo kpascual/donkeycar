@@ -1,0 +1,28 @@
+TRAIN_TEST_SPLIT: 0.8
+BATCH_SIZE: 128
+MAX_EPOCHS: 100
+SHOW_PLOT: true
+VERBOSE_TRAIN: true
+
+DATA_PATH: drive_session_data
+DRIVERS_PATH: drivers
+MODEL_ARCHITECTURES_PATH: model_architectures
+
+
+USE_EARLY_STOP: true           #would you like to stop the training if we see it's not improving fit?
+EARLY_STOP_PATIENCE: 5         #how many epochs to wait before no improvement
+MIN_DELTA: .0005               #early stop will want this much loss change before calling it improved.
+PRINT_MODEL_SUMMARY: true      #print layers and weights to stdout
+OPTIMIZER: null                #adam, sgd, rmsprop, etc.. None accepts default
+LEARNING_RATE: 0.001           #only used when OPTIMIZER specified
+LEARNING_RATE_DECAY: 0.0       #only used when OPTIMIZER specified
+
+
+# This should be noted when data gets initially collected in driving sessions
+ROI_CROP_TOP: 0
+ROI_CROP_BOTTOM: 0
+IMAGE_W: 160
+IMAGE_H: 120
+IMAGE_DEPTH: 3
+
+PRUNE_VAL_LOSS_DEGRADATION_LIMIT: 0.2 # The max amout of validation loss that is permitted during pruning.
