@@ -76,7 +76,7 @@ class RecorderConfigHandler(tornado.web.RequestHandler):
         self.render("config.html", config = cfg)
 
     def post(self):
-        args = json.loads(self.request.body)
+        args = json.loads(self.request.body.decode('utf-8'))
         path = args['path']
 
         print("path: ")

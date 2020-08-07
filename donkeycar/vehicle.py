@@ -83,7 +83,7 @@ class DataRecorder:
         # Initialize default channel values
         for channel_name, data_type in zip(self.inputs, self.types):
             if data_type == 'float':
-                self.put([channel_name], [0.0])
+                self.put([channel_name], 0.0)
                 print("channel name initialized")
                 print(channel_name)
             
