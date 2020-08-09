@@ -21,7 +21,6 @@ from tensorflow.python.keras.layers import Convolution2D
 from tensorflow.python.keras.layers import Dropout, Flatten
 
 
-from model_architectures.base import KerasPilot
 
 import donkeycar as dk
 
@@ -40,7 +39,7 @@ def get():
     return KerasLinear()
 
 
-class KerasLinear(KerasPilot):
+class KerasLinear:
     '''
     The KerasLinear pilot uses one neuron to output a continous value via the 
     Keras Dense layer with linear activation. One each for steering and throttle.
@@ -52,7 +51,7 @@ class KerasLinear(KerasPilot):
         self.compile()
 
     def compile(self):
-        self.model.compile(optimizer=self.optimizer,
+        self.model.compile(optimizer='adam',
                 loss='mse')
 
     def run(self, img_arr):

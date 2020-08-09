@@ -33,8 +33,6 @@ def MAIN(configfile = 'defaults.yml', driver_name = None):
     )
 
     # 3. sensors
-    print(newcfg['DONKEY_SIM_PATH'])
-    print(newcfg['SIM_ARTIFICIAL_LATENCY'])
     cam = DonkeyGymEnv(
         sim_path = newcfg['DONKEY_SIM_PATH'], 
         host     = newcfg['SIM_HOST'], 
@@ -42,15 +40,11 @@ def MAIN(configfile = 'defaults.yml', driver_name = None):
         conf     = newcfg['GYM_CONF'], 
         delay    = newcfg['SIM_ARTIFICIAL_LATENCY']
     )
-    telemetry_throttle = MQTTValuePub(name="jumanjijenkins/donkeytest/throttle", broker="localhost")
-    telemetry_steering = MQTTValuePub(name="jumanjijenkins/donkeytest/steering", broker="localhost")
 
     # 4. vehicle run configurations
 
 
     #### SHOULD END HERE
-
-
     parts = [
         {
             'part': cam, 
@@ -63,18 +57,6 @@ def MAIN(configfile = 'defaults.yml', driver_name = None):
             'inputs': [], 
             'outputs': ['angle', 'throttle', 'user/mode', 'recording'],
             'threaded': True
-        },
-        {
-            'part': telemetry_throttle, 
-            'inputs': ['throttle'], 
-            'outputs': [], 
-            'threaded': False
-        },
-        {
-            'part': telemetry_steering, 
-            'inputs': ['angle'], 
-            'outputs': [], 
-            'threaded': False
         },
     ]
 

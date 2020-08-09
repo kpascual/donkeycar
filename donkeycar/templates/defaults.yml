@@ -55,3 +55,21 @@ AI_LAUNCH_ENABLE_BUTTON: R2
 AI_LAUNCH_KEEP_ENABLED: false
 
 AI_THROTTLE_MULT: 1.0
+
+
+# Donkey Gym settings
+DONKEY_SIM_PATH: #/home/user/path/to/sim
+DONKEY_GYM_ENV_NAME: donkey-mountain-track-v0
+GYM_CONF:
+  body_style: donkey
+  body_rgb:
+    - 128
+    - 128
+    - 128
+  car_name: Your Car Name
+  racer_name: Racer Name
+  country: Country in the World
+  bio: Name about you
+  font_size: 100
+SIM_HOST: localhost
+SIM_ARTIFICIAL_LATENCY: 0 

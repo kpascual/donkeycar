@@ -212,13 +212,22 @@ class Vehicle:
 
 
         self.parts.append(entry)
-        self.profiler.profile_part(part)
 
     def remove(self, part):
         """
         remove part form list
         """
         self.parts.remove(part)
+
+    def initialize_drive(self):
+        # Start data recorder
+        self.data_recorder.initialize_recorder()
+        self.data_recorder.save_vehicle_configuration(self.parts)
+
+        # Start part profiler
+        self.profiler = PartProfiler()
+        for part in self.parts:
+            self.profiler.profile_part(part['part'])
 
     def start(self, rate_hz=10, max_loop_count=None, verbose=False):
         """
@@ -260,8 +269,7 @@ class Vehicle:
                     entry['part'].running = True
 
             # Pre-start checking
-            self.data_recorder.initialize_recorder()
-            self.data_recorder.save_vehicle_configuration(self.parts)
+            self.initialize_drive()
 
             # wait until the parts warm up.
             print('Starting vehicle...')

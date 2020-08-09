@@ -159,7 +159,7 @@ def train(cfg, tub_names, driver_name, ma):
 
     # Copy keras model to driver folder
     source_keras_model_path = os.path.join(cfg['MODEL_ARCHITECTURES_PATH'], ma + '.py')
-    dest_keras_model_path = os.path.join(driver_path, ma + '.py')
+    dest_keras_model_path = os.path.join(driver_path, 'part.py')
     shutil.copyfile(source_keras_model_path, dest_keras_model_path)
     
     model_name = driver_name + '/model.h5'

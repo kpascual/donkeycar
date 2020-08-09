@@ -158,12 +158,14 @@ def stop():
 
 
 def configure_car(configname, driver = None):
+    remove_existing_parts()
+
     carconfig = dk.load_config('carconfigs/' + configname)
     parts, channels = carconfig.MAIN(driver_name = driver)
 
     # 1. set parts
-    remove_existing_parts()
     add_parts(parts)
+
     channel_names = [c[0] for c in channels] 
     vehicle.set_channels(channels)
     vehicle.set_data_recorder_config(inputs=channel_names)
@@ -182,10 +184,9 @@ def configure_recorder(inputs = None, path = None):
     
 
 def remove_existing_parts():
-    for p in vehicle.parts:
-        vehicle.remove(p)
+    vehicle.parts = []
+    vehicle.set_channels([])
 
-    vehicle.channels = []
 
 
 def add_parts(parts):
