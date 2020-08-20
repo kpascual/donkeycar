@@ -30,7 +30,9 @@ class DonkeyGymEnv(object):
             'gyro' : (0., 0., 0.), 
             'accel' : (0., 0., 0.), 
             'vel' : (0., 0., 0.), 
-            'speed': 0.0
+            'speed': 0.0,
+            'current_lap_time': 0.0,
+            'laps_completed': 0
         }
         self.delay = float(delay)
 
@@ -62,7 +64,7 @@ class DonkeyGymEnv(object):
             time.sleep(self.delay / 1000.0)
         self.action = [steering, throttle]
 
-        return self.frame, self.info['speed'], self.info['pos'], self.info['gyro'], self.info['accel'], self.info['vel']
+        return self.frame, self.info['speed'], self.info['pos'], self.info['laps_completed'], self.info['current_lap_time']
 
     def shutdown(self):
         self.running = False
@@ -71,3 +73,56 @@ class DonkeyGymEnv(object):
 
 
     
+
+class DonkeyGymRemote(object):
+
+    def __init__(self, host="127.0.0.1", port=9091, headless=0, env_name="donkey-generated-track-v0", sync="asynchronous", conf={}):
+
+        self.host = host
+        self.port = port
+        self.env_name = env_name
+        self.conf = conf
+        self.action = [0.0, 0.0]
+        self.running = False
+        self.info = { 
+            'pos' : (0., 0., 0.), 
+            'gyro' : (0., 0., 0.), 
+            'accel' : (0., 0., 0.), 
+            'vel' : (0., 0., 0.), 
+            'speed': 0.0,
+            'current_lap_time': 0.0,
+            'laps_completed': 0
+        }
+
+
+    def prestart(self):
+        self.running = True
+        conf = {
+            "exe_path": "remote",
+            "host": self.host,
+            "port": self.port
+        }
+        self.conf['exe_path'] = "remote"
+        self.conf['host'] = self.host
+        self.conf['port'] = self.port
+
+        self.env = gym.make(self.env_name, conf=self.conf)
+        self.frame = self.env.reset()
+
+
+    def update(self):
+        while self.running:
+            self.frame, _, _, self.info = self.env.step(self.action)
+
+    def run_threaded(self, steering, throttle):
+        if steering is None or throttle is None:
+            steering = 0.0
+            throttle = 0.0
+        self.action = [steering, throttle]
+
+        return self.frame, self.info['speed'], self.info['pos'], self.info['laps_completed'], self.info['current_lap_time']
+
+    def shutdown(self):
+        self.running = False
+        time.sleep(0.2)
+        self.env.close()

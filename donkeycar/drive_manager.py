@@ -30,7 +30,9 @@ class ManagerHandler(tornado.web.RequestHandler):
     def get(self):
         drivers = [f.name for f in os.scandir('drivers') if f.is_dir() and f.name != '__pycache__']
         carconfigs = os.listdir('carconfigs')
-        print(root_dir)
+        drivers.sort()
+        carconfigs.sort()
+
         self.render("home.html", drivers=drivers, carconfigs=carconfigs)
 
 class DriveHandler(tornado.web.RequestHandler):
